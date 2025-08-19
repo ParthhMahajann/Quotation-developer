@@ -2,7 +2,7 @@
 -- Note: Using Supabase's built-in auth.users table instead of custom users table
 
 -- Enable Row Level Security
-ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret';
+
 
 -- Developer Types lookup table
 CREATE TABLE IF NOT EXISTS developer_types (

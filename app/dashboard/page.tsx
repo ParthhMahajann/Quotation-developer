@@ -9,7 +9,7 @@ import QuotationDashboard from "@/components/quotation-dashboard"
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { search?: string; status?: string; page?: string }
+  searchParams: Promise<{ search?: string; status?: string; page?: string }>
 }) {
   if (!isSupabaseConfigured) {
     return (
@@ -19,7 +19,10 @@ export default async function DashboardPage({
     )
   }
 
-  const supabase = createClient()
+  // ✅ Await Supabase client and searchParams
+  const supabase = await createClient()
+  const params = await searchParams
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -31,13 +34,16 @@ export default async function DashboardPage({
   // Get user profile
   const { data: userProfile } = await supabase.from("users").select("*").eq("id", user.id).single()
 
-  const page = Number.parseInt(searchParams.page || "1")
+  // Pagination
+  const page = Number.parseInt(params.page || "1")
   const pageSize = 10
   const offset = (page - 1) * pageSize
 
+  // Quotations query
   let quotationsQuery = supabase
     .from("quotations")
-    .select(`
+    .select(
+      `
       *,
       users!quotations_user_id_fkey(full_name, email),
       developer_types(name, multiplier),
@@ -47,35 +53,36 @@ export default async function DashboardPage({
         final_price,
         services(name, service_categories(name))
       )
-    `)
+    `
+    )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
   // Apply search filter
-  if (searchParams.search) {
+  if (params.search) {
     quotationsQuery = quotationsQuery.or(
-      `developer_name.ilike.%${searchParams.search}%,project_name.ilike.%${searchParams.search}%,quotation_number.ilike.%${searchParams.search}%`,
+      `developer_name.ilike.%${params.search}%,project_name.ilike.%${params.search}%,quotation_number.ilike.%${params.search}%`
     )
   }
 
   // Apply status filter
-  if (searchParams.status && searchParams.status !== "all") {
-    quotationsQuery = quotationsQuery.eq("status", searchParams.status)
+  if (params.status && params.status !== "all") {
+    quotationsQuery = quotationsQuery.eq("status", params.status)
   }
 
   const { data: quotations, error } = await quotationsQuery.range(offset, offset + pageSize - 1)
 
-  // Get total count for pagination
+  // Count query
   let countQuery = supabase.from("quotations").select("*", { count: "exact", head: true }).eq("user_id", user.id)
 
-  if (searchParams.search) {
+  if (params.search) {
     countQuery = countQuery.or(
-      `developer_name.ilike.%${searchParams.search}%,project_name.ilike.%${searchParams.search}%,quotation_number.ilike.%${searchParams.search}%`,
+      `developer_name.ilike.%${params.search}%,project_name.ilike.%${params.search}%,quotation_number.ilike.%${params.search}%`
     )
   }
 
-  if (searchParams.status && searchParams.status !== "all") {
-    countQuery = countQuery.eq("status", searchParams.status)
+  if (params.status && params.status !== "all") {
+    countQuery = countQuery.eq("status", params.status)
   }
 
   const { count: totalCount } = await countQuery
@@ -124,7 +131,7 @@ export default async function DashboardPage({
           totalCount={totalCount || 0}
           currentPage={page}
           pageSize={pageSize}
-          searchParams={searchParams}
+          searchParams={params}
           userRole={userProfile?.role || "user"}
         />
       </main>

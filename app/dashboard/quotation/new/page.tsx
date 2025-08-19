@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import QuotationWizard from "@/components/quotation-wizard"
 
 export default async function NewQuotationPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
