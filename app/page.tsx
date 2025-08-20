@@ -18,5 +18,5 @@ export default async function HomePage() {
     redirect("/auth/login")
   }
 
-  return <div>Welcome {user.email}</div>
+  redirect("/dashboard")
 }
